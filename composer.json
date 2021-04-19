@@ -1,5 +1,5 @@
 {
-    "name": "lemonstand/omnipay-vantiv",
+    "name": "optipub/omnipay-vantiv",
     "type": "library",
     "description": "Vantiv payments driver for the Omnipay payment processing library",
     "keywords": [
@@ -17,16 +17,20 @@
         {
             "name": "LemonStand",
             "email": "chris@lemonstand.com"
+        },
+        {
+            "name": "Costin Ghiocel",
+            "email": "costin.ghiocel@optipub.com"
         }
     ],
     "autoload": {
         "psr-4": { "Omnipay\\Vantiv\\" : "src/" }
     },
     "require": {
-        "omnipay/common": "~2.0"
+        "omnipay/common": "~3.0"
     },
     "require-dev": {
-        "omnipay/tests": "~2.0"
+        "omnipay/tests": "~3.0"
     },
     "extra": {
         "branch-alias": {

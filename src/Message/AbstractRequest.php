@@ -1,6 +1,8 @@
 <?php namespace Omnipay\Vantiv\Message;
 
 use Omnipay\Common\CreditCard;
+use Omnipay\Common\Http\ClientInterface;
+use Symfony\Component\HttpFoundation\Request as HttpRequest;
 
 abstract class AbstractRequest extends \Omnipay\Common\Message\AbstractRequest
 {
@@ -11,7 +13,7 @@ abstract class AbstractRequest extends \Omnipay\Common\Message\AbstractRequest
      *
      * @var string URL
      */
-    protected $testEndpoint = 'https://www.testlitle.com/sandbox/communicator/online';
+    protected $testEndpoint = 'https://transact.vantivprelive.com/vap/communicator/online';
 
     /**
      * Pre-Live Endpoint URL
@@ -103,6 +105,27 @@ abstract class AbstractRequest extends \Omnipay\Common\Message\AbstractRequest
     }
 
     /**
+     * Overriding constructor to force guzzle with ssl params.
+     * Create a new Request
+     *
+     * @param ClientInterface $httpClient  A HTTP client to make API calls with
+     * @param HttpRequest     $httpRequest A Symfony HTTP request object
+     */
+    public function __construct(ClientInterface $httpClient, HttpRequest $httpRequest)
+    {
+        /** Getting this to wokr was a bit of a fun rabbit hole, this is the config to disable ssl issue on test server */
+        $config = ['timeout' => 3, 'verify' => false];
+        /** build guzzle here rather than allow discovery, so we can specify config, otherwise we get default and theres no api to alter config */
+        $guzzle = \Http\Adapter\Guzzle7\Client::createWithConfig($config);
+        /** build the omnipay client passing in guzzle with the config */
+        $client = new \Omnipay\Common\Http\Client($guzzle);
+//dd($client);
+//dd(curl_version());
+        /** Now it's compatible */
+        parent::__construct($client, $httpRequest);
+    }
+
+    /**
      * Get API endpoint URL
      *
      * If test mode and pre-live mode are both set, then
@@ -180,28 +203,13 @@ abstract class AbstractRequest extends \Omnipay\Common\Message\AbstractRequest
      */
     public function sendData($data)
     {
-        // don't throw exceptions for 4xx errors
-        $this->httpClient->getEventDispatcher()->addListener(
-            'request.error',
-            function ($event) {
-                if ($event['response']->isClientError()) {
-                    $event->stopPropagation();
-                }
-            }
-        );
-
-        $httpRequest = $this->httpClient->createRequest(
+        return $this->httpClient->request(
             $this->getHttpMethod(),
             $this->getEndpoint(),
-            null,
+            [
+                'Content-Type'  => 'text/xml; charset=utf-8'
+            ],
             $data->asXML()
         );
-
-        $httpResponse = $httpRequest
-            ->setHeader('Content-Type', $this->getContentType())
-            ->send()
-            ->xml();
-
-        return $this->createResponse($httpResponse);
     }
 }
