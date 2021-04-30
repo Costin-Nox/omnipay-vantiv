@@ -1,6 +1,7 @@
 <?php namespace Omnipay\Vantiv\Message;
 
 use Omnipay\Common\Exception\InvalidRequestException;
+use SimpleXMLElement;
 
 /**
  * Vantiv Authorize Request
@@ -9,19 +10,67 @@ class AuthorizeRequest extends AbstractRequest
 {
     protected $transactionType = 'authorization';
 
-    public function getData()
+    protected $transactionXml;
+
+    /**
+     * To string.
+     * 
+     * @return string 
+     */
+    public function __toString()
+    {
+        if (empty($this->transactionXml)) { return ''; }
+
+        return $this->transactionXml->asXML();
+    }
+
+    /**
+     * Return XML payload as object.
+     * @return SimpleXMLElement 
+     */
+    public function getXmlPayload() : \SimpleXMLElement
+    {
+        return $this->transactionXml;
+    }
+
+    public function generateCurlString() : string
+    {
+        $string = "curl '{$this->getEndpoint()}' -A 'Moliza/5.0' \ 'Content-Type: text/xml; charset=utf-8' -X POST \ -d '" . (string)$this . "'";
+
+        return $string;
+    }
+
+    /**
+     * Run validation
+     * @return bool 
+     * @throws InvalidRequestException 
+     */
+    private function validateRequest() : bool
     {
         $this->validate('amount');
+
+        if (empty($this->getCard()) && empty($this->getToken())) {
+            throw new InvalidRequestException("Please specify a payment method as either card or token.");
+        }
+
+        $this->validate('merchantId', 'username', 'password','orderId');
+
+        return true;
+    }
+
+    /**
+     * Compose XML request
+     * @return mixed 
+     * @throws InvalidRequestException 
+     */
+    public function getData()
+    {
+        $this->validateRequest();
 
         $card = $this->getCard();
         $token = $this->getToken();
 
-        if (!$card && !$token) {
-            $param  = (!$card) ? 'card' : 'token';
-            throw new InvalidRequestException("The $param parameter is required");
-        }
-
-        $data = new \SimpleXMLElement('<litleOnlineRequest xmlns="http://www.litle.com/schema" />');
+        $data = new \SimpleXMLElement('<cnpOnlineRequest xmlns="http://www.vantivcnp.com/schema"/>');
         $data->addAttribute('version', $this->getVersion());
         $data->addAttribute('merchantId', $this->getMerchantId());
 
@@ -30,7 +79,7 @@ class AuthorizeRequest extends AbstractRequest
         $authentication->addChild('password', $this->getPassword());
 
         $transaction = $data->addChild($this->transactionType);
-        $transaction->addAttribute('id', $this->getTransactionId());
+    $transaction->addAttribute('id', /*$this->getTransactionId()*/ "ididid");
         $transaction->addAttribute('customerId', $this->getCustomerId());
         $transaction->addAttribute('reportGroup', $this->getReportGroup());
         $transaction->addChild('orderId', $this->getOrderId());
@@ -61,6 +110,12 @@ class AuthorizeRequest extends AbstractRequest
             $tokenElement = $transaction->addChild('token');
             $tokenElement->addChild('litleToken', $token);
         }
+
+        $data = $this->cleanXml(($data));
+
+        dump($data);
+
+        $this->transactionXml = $data;
 
         return $data;
     }

@@ -63,6 +63,16 @@ class Gateway extends AbstractGateway
         return $this->setParameter('preLiveMode', $value);
     }
 
+    public function getReportGroup()
+    {
+        return $this->getParameter('reportGroup');
+    }
+
+    public function setReportGroup($value)
+    {
+        return $this->setParameter('reportGroup', $value);
+    }
+
     /**
      * @param array $parameters
      * @return \Omnipay\Vantiv\Message\AuthorizeRequest

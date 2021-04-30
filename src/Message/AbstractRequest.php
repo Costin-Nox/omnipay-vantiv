@@ -1,26 +1,28 @@
 <?php namespace Omnipay\Vantiv\Message;
 
 use Omnipay\Common\CreditCard;
+use Omnipay\Common\Exception\RuntimeException;
 use Omnipay\Common\Http\ClientInterface;
+use SimpleXMLElement;
 use Symfony\Component\HttpFoundation\Request as HttpRequest;
 
 abstract class AbstractRequest extends \Omnipay\Common\Message\AbstractRequest
 {
-    protected $version = '9.4';
+    protected $version = '12.1';
 
     /**
      * Test Endpoint URL
      *
      * @var string URL
      */
-    protected $testEndpoint = 'https://transact.vantivprelive.com/vap/communicator/online';
+    protected $testEndpoint = 'https://www.testvantivcnp.com/sandbox/communicator/online';
 
     /**
      * Pre-Live Endpoint URL
      *
      * @var string URL
      */
-    protected $preLiveEndpoint = 'https://transact.vantivprelive.com/vap/communicator/online';
+    protected $preLiveEndpoint = 'https://www.testvantivcnp.com/sandbox/communicator/online';
 
     /**
      * Live Endpoint URL
@@ -29,11 +31,48 @@ abstract class AbstractRequest extends \Omnipay\Common\Message\AbstractRequest
      */
     protected $liveEndpoint = 'https://transact.vantivcnp.com/vap/communicator/online';
 
+    /**
+     * Clean up empty tags, this is less annoying than adding a check before each item :)
+     * 
+     * @param SimpleXMLElement $data 
+     * 
+     * @return SimpleXMLElement 
+     */
+    protected function cleanXml(\SimpleXMLElement $xml) : \SimpleXMLElement
+    {
+        $xmlString = $xml->asXML();
+
+        //nested, so need to keep removing shit and see if it changed, then try again to remove nested group parents
+        while(true)
+        {
+            $xmlStrinRef = $xmlString; //keep a reference to prev, see if it changes or not.
+            $xmlString = preg_replace('~<([^\\s>])+>\\s*</\\1>~si', '', $xmlString);
+            $xmlString = preg_replace('~<[^\\s>]+\\s*/>~si', '', $xmlString);
+            if($xmlStrinRef === $xmlString) break; // If not changed, done.
+        }
+        
+        $xml = simplexml_load_string($xmlString);
+
+        return $xml;
+    }
+
+    /**
+     * Get merchant id.
+     * 
+     * @return string 
+     */
     public function getMerchantId()
     {
         return $this->getParameter('merchantId');
     }
 
+    /**
+     * Set merchant id.
+     * 
+     * @param mixed $value 
+     * @return $this 
+     * @throws RuntimeException 
+     */
     public function setMerchantId($value)
     {
         return $this->setParameter('merchantId', $value);
@@ -102,27 +141,6 @@ abstract class AbstractRequest extends \Omnipay\Common\Message\AbstractRequest
     public function setPreLiveMode($value)
     {
         return $this->setParameter('preLiveMode', $value);
-    }
-
-    /**
-     * Overriding constructor to force guzzle with ssl params.
-     * Create a new Request
-     *
-     * @param ClientInterface $httpClient  A HTTP client to make API calls with
-     * @param HttpRequest     $httpRequest A Symfony HTTP request object
-     */
-    public function __construct(ClientInterface $httpClient, HttpRequest $httpRequest)
-    {
-        /** Getting this to wokr was a bit of a fun rabbit hole, this is the config to disable ssl issue on test server */
-        $config = ['timeout' => 3, 'verify' => false];
-        /** build guzzle here rather than allow discovery, so we can specify config, otherwise we get default and theres no api to alter config */
-        $guzzle = \Http\Adapter\Guzzle7\Client::createWithConfig($config);
-        /** build the omnipay client passing in guzzle with the config */
-        $client = new \Omnipay\Common\Http\Client($guzzle);
-//dd($client);
-//dd(curl_version());
-        /** Now it's compatible */
-        parent::__construct($client, $httpRequest);
     }
 
     /**
@@ -203,13 +221,19 @@ abstract class AbstractRequest extends \Omnipay\Common\Message\AbstractRequest
      */
     public function sendData($data)
     {
-        return $this->httpClient->request(
+        $httpResponse = $this->httpClient->request(
             $this->getHttpMethod(),
             $this->getEndpoint(),
             [
-                'Content-Type'  => 'text/xml; charset=utf-8'
+                'Content-Type'  => 'text/xml; charset=utf-8',
+                'User-Agent' => 'Moliza/5.0'
             ],
             $data->asXML()
         );
+
+        $data = simplexml_load_string($httpResponse->getBody()->getContents());
+
+
+        return $this->createResponse($data);
     }
 }
