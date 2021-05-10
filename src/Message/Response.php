@@ -1,7 +1,9 @@
-<?php namespace Omnipay\Vantiv\Message;
+<?php
+
+namespace Omnipay\Vantiv\Message;
 
 /**
- * Vantiv Response
+ * Vantiv Response.
  *
  * This is the response class for all Vantiv REST requests.
  *
@@ -10,7 +12,7 @@
 class Response extends \Omnipay\Common\Message\AbstractResponse
 {
     /**
-     * Check for successful response
+     * Check for successful response.
      *
      * @return bool
      */
@@ -25,13 +27,23 @@ class Response extends \Omnipay\Common\Message\AbstractResponse
         return false;
     }
 
-
     public function getTransactionReference()
     {
         $element = $this->element;
 
         if (isset($this->data->$element->litleTxnId)) {
             return ((string) $this->data->$element->litleTxnId);
+        }
+
+        return null;
+    }
+
+    public function getCnpTxnId()
+    {
+        $element = $this->element;
+
+        if (isset($this->data->$element->cnpTxnId)) {
+            return ((string) $this->data->$element->cnpTxnId);
         }
 
         return null;
@@ -60,7 +72,7 @@ class Response extends \Omnipay\Common\Message\AbstractResponse
     }
 
     /**
-     * Get the response code
+     * Get the response code.
      *
      * If the transaction is successful the code is embedded in the body,
      * if not, then it is on the root element.
@@ -113,5 +125,31 @@ class Response extends \Omnipay\Common\Message\AbstractResponse
         }
 
         return null;
+    }
+
+    public function getResponseData() : array
+    {
+        return [
+            'responseCode'         => $this->getResponseCode(),
+            'avsResult'            => $this->getAvsResult(),
+            'cardValidationResult' => $this->getCardValidationResult(),
+            'message'              => $this->getMessage(),
+            'authCode'             => $this->getAuthCode(),
+            'transactionReference' => $this->getTransactionReference(),
+            'orderId'              => $this->getOrderId(),
+            'isSuccessful'         => $this->isSuccessful(),
+            'cnpTxnId'             => $this->getCnpTxnId(),
+        ];
+    }
+
+    public function getRequest() {
+        $request = $this->request->getRequest();
+
+        return $request;
+    }
+
+    public function getCurlRequest() : string
+    {
+        return $this->request->getCurlRequest();
     }
 }

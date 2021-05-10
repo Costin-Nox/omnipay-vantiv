@@ -79,7 +79,7 @@ class AuthorizeRequest extends AbstractRequest
         $authentication->addChild('password', $this->getPassword());
 
         $transaction = $data->addChild($this->transactionType);
-    $transaction->addAttribute('id', /*$this->getTransactionId()*/ "ididid");
+        $transaction->addAttribute('id', /*$this->getTransactionId()*/ "ididid");
         $transaction->addAttribute('customerId', $this->getCustomerId());
         $transaction->addAttribute('reportGroup', $this->getReportGroup());
         $transaction->addChild('orderId', $this->getOrderId());
@@ -113,8 +113,6 @@ class AuthorizeRequest extends AbstractRequest
 
         $data = $this->cleanXml(($data));
 
-        dump($data);
-
         $this->transactionXml = $data;
 
         return $data;
@@ -123,5 +121,10 @@ class AuthorizeRequest extends AbstractRequest
     protected function createResponse($response)
     {
         return $this->response = new AuthorizeResponse($this, $response);
+    }
+
+    public function getRequest()
+    {
+        return $this->transactionXml;
     }
 }
